@@ -16,7 +16,7 @@ pg_reindex
 
 
 
-Reindex tables based on criteria
+Rebuild indexes with flexibility
 
 
 * Free software: MIT license

@@ -10,7 +10,7 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = ['Click>=7.0', ]
+requirements = [ ]
 
 test_requirements = ['pytest>=3', ]
 
@@ -28,7 +28,7 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
     ],
-    description="Reindex tables based on criteria",
+    description="Rebuild indexes with flexibility",
     entry_points={
         'console_scripts': [
             'pg_reindex=pg_reindex.cli:main',

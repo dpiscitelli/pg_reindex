@@ -47,7 +47,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'pg_reindex'
-copyright = "2023, David Piscitelli"
+copyright = "2024, David Piscitelli"
 author = "David Piscitelli"
 
 # The version info for the project you're documenting, acts as replacement
