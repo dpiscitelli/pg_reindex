@@ -5,27 +5,32 @@ import logging
 from logging.handlers import RotatingFileHandler
 import textwrap
 from psycopg import conninfo
-from pg_reindex.pg_reindex import Reindex
+from .pg_reindex import Reindex
+from .history import History
 
 
-def set_logger(debug: bool = False, log_file: str = None) -> logging.Logger:
-    logger = logging.getLogger()
+def set_logger(
+    debug: bool = False, log_dir: str = None
+) -> (logging.Logger, logging.Logger):
+    # General log Error
+    global_logger = logging.getLogger("global_log")
     if debug is True:
-        logger.setLevel(logging.DEBUG)
+        global_logger.setLevel(logging.DEBUG)
     else:
-        logger.setLevel(logging.INFO)
+        global_logger.setLevel(logging.INFO)
     formatter = logging.Formatter("%(asctime)s :: %(levelname)s :: %(message)s")
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(formatter)
-    logger.addHandler(stream_handler)
-    if log_file is not None:
-        file_handler = RotatingFileHandler(log_file, "a", 1000000, 1)
+    global_logger.addHandler(stream_handler)
+    if log_dir is not None:
+        log_file_general = f"{log_dir}/pg_reindex.log"
+        file_handler = RotatingFileHandler(log_file_general, "a", 1000000, 1)
         file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-    return logger
+        global_logger.addHandler(file_handler)
+    return global_logger
 
 
-def set_conninfo(
+def set_uri(
     host: str = None, port: int = None, user: str = None, database: str = None
 ) -> str:
     if host is None:
@@ -59,10 +64,10 @@ def main():
     )
     parser.add_argument(
         "-l",
-        "--log-file",
-        dest="log_file",
-        help="log file",
-        default="/tmp/pg_reindex.log",
+        "--log-dir",
+        dest="log_dir",
+        help="log dir",
+        default="/tmp",
     )
     parser.add_argument("-H", "--host", dest="host", help="IP/hostname")
     parser.add_argument("-p", "--port", dest="port", help="port")
@@ -82,35 +87,71 @@ def main():
         default=120,
     )
     parser.add_argument(
-        "-S",
+        "-s",
         "--statement-timeout",
         dest="statement_timeout",
         help="Time in seconds to wait for reindex command (no timeout)",
         default=0,
     )
     parser.add_argument(
-        "-t",
+        "-S",
+        "--schema",
+        dest="schemas",
+        help="Tables to reindex",
+    )
+    parser.add_argument(
+        "-T",
         "--table",
+        dest="tables",
         nargs="*",
         action="extend",
-        dest="tables",
+        help="Tables to reindex",
+    )
+    parser.add_argument(
+        "-I",
+        "--index",
+        dest="indexes",
+        nargs="*",
+        action="extend",
         help="Tables to reindex",
     )
     parser.add_argument(
         "-C", "--concurrently", dest="concurrently", action="store_true", help=""
     )
     parser.add_argument("--dry-run", dest="dry_run", action="store_true", help="")
+    parser.add_argument(
+        "--with-history",
+        dest="with_history",
+        action="store_true",
+        default="False",
+        help="",
+    )
+    parser.add_argument(
+        "--historydb", dest="historydb", default="/tmp/pg_reindex.db", help=""
+    )
     args = parser.parse_args()
 
-    logger = set_logger(args.debug, args.log_file)
-    uri = set_conninfo(
+    logger = set_logger(args.debug, args.log_dir)
+    uri = set_uri(
         host=args.host, port=args.port, user=args.user, database=args.database
     )
-    if args.tables is not None:
+
+    if args.with_history is False:
+        History(args.log_dir, args.debug)
+
+    if args.indexes is not None:
+        logger.debug(f"Indexes to rebuild: {args.indexes}")
+        pass
+    elif args.tables is not None:
         logger.debug(f"Tables to reindex: {args.tables}")
-        work = Reindex(uri)
-        for t in args.tables:
-            work.reindex_table(t, args.dry_run)
+        # work = Reindex(
+        #    uri, args.log_dir, dry_run=args.dry_run, debug=args.debug, logger=logger
+        # )
+        # work.reindex_table_job(args.tables)
+    elif args.schemas is not None:
+        logger.debug(f"Schemas to reindex: {args.schemas}")
+    else:
+        pass
     return 0
 
 
