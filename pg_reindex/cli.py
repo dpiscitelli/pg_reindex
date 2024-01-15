@@ -9,9 +9,7 @@ from .pg_reindex import Reindex
 from .history import History
 
 
-def set_logger(
-    debug: bool = False, log_dir: str = None
-) -> (logging.Logger, logging.Logger):
+def set_logger(debug: bool = False, log_file: str = None) -> logging.Logger:
     # General log Error
     global_logger = logging.getLogger("global_log")
     if debug is True:
@@ -22,9 +20,8 @@ def set_logger(
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(formatter)
     global_logger.addHandler(stream_handler)
-    if log_dir is not None:
-        log_file_general = f"{log_dir}/pg_reindex.log"
-        file_handler = RotatingFileHandler(log_file_general, "a", 1000000, 1)
+    if log_file is not None:
+        file_handler = RotatingFileHandler(log_file, "a", 1000000, 1)
         file_handler.setFormatter(formatter)
         global_logger.addHandler(file_handler)
     return global_logger
@@ -62,13 +59,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=documentation,
     )
-    parser.add_argument(
-        "-l",
-        "--log-dir",
-        dest="log_dir",
-        help="log dir",
-        default="/tmp",
-    )
+    parser.add_argument("-l", "--log-file", dest="log_file", help="log file")
     parser.add_argument("-H", "--host", dest="host", help="IP/hostname")
     parser.add_argument("-p", "--port", dest="port", help="port")
     parser.add_argument("-U", "--username", dest="user", help="User name")
@@ -97,6 +88,8 @@ def main():
         "-S",
         "--schema",
         dest="schemas",
+        nargs="*",
+        action="extend",
         help="Tables to reindex",
     )
     parser.add_argument(
@@ -131,25 +124,26 @@ def main():
     )
     args = parser.parse_args()
 
-    logger = set_logger(args.debug, args.log_dir)
+    logger = set_logger(args.debug, args.log_file)
     uri = set_uri(
         host=args.host, port=args.port, user=args.user, database=args.database
     )
 
-    if args.with_history is False:
-        History(args.log_dir, args.debug)
+    # if args.with_history is False:
+    #    History(args.log_file, args.debug)
 
+    work = Reindex(
+        uri, args.log_file, dry_run=args.dry_run, debug=args.debug, logger=logger
+    )
     if args.indexes is not None:
         logger.debug(f"Indexes to rebuild: {args.indexes}")
         pass
     elif args.tables is not None:
         logger.debug(f"Tables to reindex: {args.tables}")
-        # work = Reindex(
-        #    uri, args.log_dir, dry_run=args.dry_run, debug=args.debug, logger=logger
-        # )
-        # work.reindex_table_job(args.tables)
+        work.reindex_table_job(args.tables)
     elif args.schemas is not None:
         logger.debug(f"Schemas to reindex: {args.schemas}")
+        work.reindex_schema_job(args.schemas)
     else:
         pass
     return 0

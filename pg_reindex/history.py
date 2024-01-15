@@ -12,5 +12,3 @@ class History:
 
     def reset_db(self):
         os.remove(self.db)
-
-

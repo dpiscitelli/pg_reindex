@@ -8,7 +8,7 @@ class Reindex:
         self.logger = logger or logging.getLogger(__name__)
         self.command = PGCommand(uri, debug)
         self.dry_run = dry_run
-        self.history = History(log_dir, debug)
+        # self.history = History(log_dir, debug)
 
     def reindex_table_unit(self, schema_name, table_name):
         indexes = self.command.get_indexes(schema_name, table_name, "%")
@@ -22,19 +22,19 @@ class Reindex:
                 self.logger.info(f"{message}")
             else:
                 self.logger.error(f"{message}")
-            self.history.push_history(
-                f"TABLE::{schema_name}.{table_name}::INDEX::{i[0]}.{i[2]}"
-            )
+            # self.history.push_history(
+            #    f"TABLE::{schema_name}.{table_name}::INDEX::{i[0]}.{i[2]}"
+            # )
 
     def reindex_table_job(self, tables):
         for t in tables:
             schema_name, table_name = t.split(".")
             self.reindex_table_unit(schema_name, table_name)
+            self.logger.debug(
+                f"Reindex.reindex_tables:: schema={schema_name}, table pattern={table_name}"
+            )
 
-    def reindex_table(self, table_pattern):
-        schema_name, table_name = table_pattern.split(".")
-        self.logger.debug(
-            f"Reindex.reindex_tables:: schema={schema_name}, table pattern={table_name}"
-        )
-        tables = self.command.get_tables(schema_name, table_name)
-        self.logger.debug(f"Reindex.reindex_tables:: tables to process => {tables}")
+    def reindex_schema_job(self, schemas):
+        tables = self.command.get_tables_from_schemas(schemas)
+        self.logger.debug(f"Reindex.reindex_schema_job:: Tables to reindex {tables}")
+        self.reindex_table_job(tables)

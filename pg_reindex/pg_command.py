@@ -41,24 +41,27 @@ class PGCommand:
                 self.logger.debug(f"PGCommand.get_indexes:: Index list: {index_list}")
             return index_list
 
-    def get_tables(self, schema_pattern, table_pattern):
+    def get_tables_from_schemas(self, schemas):
         query = sql.SQL(
             """
             SELECT
-                n.nspname AS schemaname,
-                c.relname AS tablename
+                n.nspname||'.'||c.relname
             FROM pg_class c
             JOIN pg_namespace n ON n.oid = c.relnamespace
             WHERE (c.relkind = ANY (ARRAY['r'::"char", 'm'::"char", 'p'::"char"]))
-            AND n.nspname SIMILAR TO %s
-            AND c.relname SIMILAR TO %s
+            AND n.nspname = ANY(%s)
             """
         )
         try:
             with SQLConnector(self.uri) as session:
                 c = session.connection_db.cursor()
-                c.execute(query, [schema_pattern, table_pattern])
-                return c.fetchall()
+                c.execute(
+                    query,
+                    [
+                        schemas,
+                    ],
+                )
+                return [x[0] for x in c.fetchall()]
         except psycopg.Error as e:
             self.logger.error(f"Error: {e}")
             self.logger.error(f"Query: {e}")
@@ -71,7 +74,12 @@ class PGCommand:
         try:
             with SQLConnector(self.uri) as session:
                 c = session.connection_db.cursor()
-                c.execute(query, [index_name])
+                c.execute(
+                    query,
+                    [
+                        index_name,
+                    ],
+                )
             return True, c.statusmessage
         except psycopg.Error as e:
             self.logger.error(f"INDEX: {index_name} :: {e}")
