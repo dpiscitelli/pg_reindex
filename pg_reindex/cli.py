@@ -74,15 +74,15 @@ def main():
         "-L",
         "--lock-timeout",
         dest="lock_timeout",
-        help="Time in seconds to wait for lock (default=120)",
+        help="Time in seconds to wait for lock (default 2min)",
         default=120,
     )
     parser.add_argument(
         "-s",
         "--statement-timeout",
         dest="statement_timeout",
-        help="Time in seconds to wait for reindex command (no timeout)",
-        default=0,
+        help="Time in seconds to wait for reindex command (default 5h)",
+        default=18000,
     )
     parser.add_argument(
         "-S",
@@ -122,6 +122,7 @@ def main():
     parser.add_argument(
         "--historydb", dest="historydb", default="/tmp/pg_reindex.db", help=""
     )
+    parser.add_argument("-j", "--jobs", dest="jobs", default=1, help="")
     args = parser.parse_args()
 
     logger = set_logger(args.debug, args.log_file)
@@ -129,15 +130,13 @@ def main():
         host=args.host, port=args.port, user=args.user, database=args.database
     )
 
-    # if args.with_history is False:
-    #    History(args.log_file, args.debug)
+    if args.with_history is True:
+        History(args.historydb, args.debug)
 
-    work = Reindex(
-        uri, args.log_file, dry_run=args.dry_run, debug=args.debug, logger=logger
-    )
+    work = Reindex(uri, args)
     if args.indexes is not None:
         logger.debug(f"Indexes to rebuild: {args.indexes}")
-        pass
+        work.reindex_index_job(args.indexes)
     elif args.tables is not None:
         logger.debug(f"Tables to reindex: {args.tables}")
         work.reindex_table_job(args.tables)

@@ -5,10 +5,18 @@ from pg_reindex.sql_connector import SQLConnector
 
 
 class PGCommand:
-    def __init__(self, uri, debug=False, logger=None):
+    def __init__(
+        self,
+        uri,
+        lock_timeout=120,
+        statement_timeout=18000,
+        debug=False,
+    ):
         self.uri = uri
-        self.logger = logger or logging.getLogger(__name__)
+        self.logger = logging.getLogger("global_log")
         self.debug = debug
+        self.lock_timeout = f"SET LOCK_TIMEOUT = '{lock_timeout}s'"
+        self.statement_timeout = f"SET STATEMENT_TIMEOUT = '{statement_timeout}s'"
 
     def get_indexes(self, schema_name, table_name, index_pattern="%"):
         query = sql.SQL(
@@ -22,7 +30,8 @@ class PGCommand:
                     WHEN indisunique THEN 'u'
                     ELSE 'i'
                 END as index_type,
-                a.amname AS index_method
+                a.amname AS index_method,
+                pg_get_indexdef(x.indexrelid)
             FROM pg_index x
             JOIN pg_class c ON c.oid = x.indrelid
             JOIN pg_class i ON i.oid = x.indexrelid
@@ -68,19 +77,17 @@ class PGCommand:
             return False, e
 
     def rebuild_index(self, index_name, concurrently=False):
-        query = sql.SQL(f"REINDEX INDEX %s")
         if concurrently is True:
-            query = sql.SQL(f"REINDEX INDEX CONCURRENTLY %s")
+            option_concurrently = "CONCURRENTLY"
+        else:
+            option_concurrently = ""
+        query = f"REINDEX INDEX {option_concurrently} {index_name}"
         try:
             with SQLConnector(self.uri) as session:
                 c = session.connection_db.cursor()
-                c.execute(
-                    query,
-                    [
-                        index_name,
-                    ],
-                )
-            return True, c.statusmessage
+                c.execute(self.lock_timeout)
+                c.execute(self.statement_timeout)
+                c.execute(query)
+            return True, f" OK:: REINDEX {index_name} (CONCURRENTLY={concurrently})"
         except psycopg.Error as e:
-            self.logger.error(f"INDEX: {index_name} :: {e}")
-            return False, e
+            return False, f" KO:: REINDEX {index_name}: {e}"
