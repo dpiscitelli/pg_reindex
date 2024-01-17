@@ -1,14 +1,17 @@
 import logging
-import os
-import sqlite3
+import time
+from pg_reindex.sql_connector import SQLLITEConnector
 
 
 class History:
-    def __init__(self, db, debug=False, logger=None):
-        self.logger = logger or logging.getLogger(__name__)
+    def __init__(self, db, debug=False):
+        self.logger = logging.getLogger("global_log")
         self.debug = debug
         self.db = db
-        self.conn = sqlite3.connect(db)
 
-    def reset_db(self):
-        os.remove(self.db)
+    def set_history(self, index, status, message):
+        now = int(time.time())
+        with SQLLITEConnector(self.db) as history:
+            cur = history.connection_db.cursor()
+            query = f"""INSERT INTO indexation_history(index_name, indexed_at, status, status_message) VALUES ('{index}', '{now}', '{status}', '{message}')"""
+            cur.execute(query)

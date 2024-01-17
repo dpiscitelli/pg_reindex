@@ -15,27 +15,30 @@ class Reindex:
         )
         self.dry_run = opts.dry_run
         self.concurrently = opts.concurrently
-        self.jobs = opts.jobs
-        # self.history = History(log_dir, debug)
+        self.jobs = int(opts.jobs)
+        self.with_history = opts.with_history
+        self.historydb = opts.historydb
+        self.debug = opts.debug
 
     def reindex_table_unit(self, table):
         schema_name, table_name = table.split(".")
         indexes = self.command.get_indexes(schema_name, table_name, "%")
         for i in indexes:
-            self.logger.info(f"Table {schema_name}.{table_name}: rebuild {i[0]}.{i[2]}")
+            index_name = f"{i[0]}.{i[2]}"
+            self.logger.info(f"Table {schema_name}.{table_name}: rebuild {index_name}")
             if self.dry_run is True:
                 status, message = True, "Reindex (dry run !)"
             else:
                 status, message = self.command.rebuild_index(
-                    f"{i[0]}.{i[2]}", concurrently=self.concurrently
+                    index_name, concurrently=self.concurrently
                 )
             if status is True:
                 self.logger.info(f"{message}")
             else:
                 self.logger.error(f"{message}")
-            # self.history.push_history(
-            #    f"TABLE::{schema_name}.{table_name}::INDEX::{i[0]}.{i[2]}"
-            # )
+            if self.with_history:
+                history = History(self.historydb, self.debug)
+                history.set_history(index_name, status, message)
         return True
 
     def reindex_index_job(self, indexes):
@@ -44,6 +47,9 @@ class Reindex:
                 status, message = True, "Reindex (dry run !)"
             else:
                 status, message = self.command.rebuild_index(i)
+                if self.with_history:
+                    history = History(self.historydb, self.debug)
+                    history.set_history(i, status, message)
             if status is True:
                 self.logger.info(f"{message}")
             else:

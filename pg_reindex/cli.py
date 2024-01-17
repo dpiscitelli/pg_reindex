@@ -27,25 +27,7 @@ def set_logger(debug: bool = False, log_file: str = None) -> logging.Logger:
     return global_logger
 
 
-def set_uri(
-    host: str = None, port: int = None, user: str = None, database: str = None
-) -> str:
-    if host is None:
-        host = "127.0.0.1"
-    if port is None:
-        port = 5432
-    if user is None:
-        user = "postgres"
-    if database is None:
-        database = "postgres"
-    uri = conninfo.make_conninfo(
-        host=host, port=port, user=user, dbname=database, connect_timeout=10
-    )
-    return uri
-
-
 def main():
-    """Console script for pg_reindex."""
     desc = """Description: Script to rebuild indexes with criteria"""
     documentation = textwrap.dedent(
         """
@@ -60,10 +42,16 @@ def main():
         epilog=documentation,
     )
     parser.add_argument("-l", "--log-file", dest="log_file", help="log file")
-    parser.add_argument("-H", "--host", dest="host", help="IP/hostname")
-    parser.add_argument("-p", "--port", dest="port", help="port")
-    parser.add_argument("-U", "--username", dest="user", help="User name")
-    parser.add_argument("-d", "--database", dest="database", help="Database name")
+    parser.add_argument(
+        "-H", "--host", dest="host", default="127.0.0.1", help="IP/hostname"
+    )
+    parser.add_argument("-p", "--port", dest="port", default=5432, help="port")
+    parser.add_argument(
+        "-U", "--username", dest="user", default="postgres", help="User name"
+    )
+    parser.add_argument(
+        "-d", "--database", dest="database", default="postgres", help="Database name"
+    )
     parser.add_argument(
         "--version", dest="display_version", help="Display version", action="store_true"
     )
@@ -126,12 +114,13 @@ def main():
     args = parser.parse_args()
 
     logger = set_logger(args.debug, args.log_file)
-    uri = set_uri(
-        host=args.host, port=args.port, user=args.user, database=args.database
+    uri = conninfo.make_conninfo(
+        host=args.host,
+        port=args.port,
+        user=args.user,
+        dbname=args.database,
+        connect_timeout=10,
     )
-
-    if args.with_history is True:
-        History(args.historydb, args.debug)
 
     work = Reindex(uri, args)
     if args.indexes is not None:

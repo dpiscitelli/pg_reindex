@@ -2,6 +2,7 @@ import logging
 import psycopg
 from psycopg import sql
 from pg_reindex.sql_connector import SQLConnector
+import time
 
 
 class PGCommand:
