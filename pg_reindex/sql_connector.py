@@ -78,7 +78,17 @@ class SQLLITEConnector:
     def init_db(self):
         conn = sqlite3.connect(self.db)
         cur = conn.cursor()
-        query = """CREATE TABLE indexation_history (index_name TEXT, indexed_at TEXT, status TEXT, status_message TEXT)"""
+        query = """CREATE TABLE indexation_history (
+                        database_name TEXT, 
+                        schema_name TEXT,
+                        table_name TEXT,
+                        index_name TEXT, 
+                        indexed_at INTEGER, 
+                        status TEXT, 
+                        status_message TEXT, 
+                        timestamp_message TEXT, 
+                        CONSTRAINT history_pk PRIMARY KEY(database_name, index_name)
+                )"""
         cur.execute(query)
         conn.commit()
         query = "CREATE INDEX indexation_history_idx ON indexation_history(index_name)"

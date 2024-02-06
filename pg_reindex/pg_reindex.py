@@ -19,6 +19,7 @@ class Reindex:
         self.with_history = opts.with_history
         self.historydb = opts.historydb
         self.debug = opts.debug
+        self.database_name = opts.database
 
     def reindex_table_unit(self, table):
         schema_name, table_name = table.split(".")
@@ -38,18 +39,36 @@ class Reindex:
                 self.logger.error(f"{message}")
             if self.with_history:
                 history = History(self.historydb, self.debug)
-                history.set_history(index_name, status, message)
+                history.set_or_update_history(
+                    self.database_name,
+                    schema_name,
+                    table_name,
+                    index_name,
+                    status,
+                    message,
+                )
         return True
 
-    def reindex_index_job(self, indexes):
+    def reindex_index_job(self, indexes, resume=False):
+        """ """
         for i in indexes:
             if self.dry_run is True:
                 status, message = True, "Reindex (dry run !)"
             else:
-                status, message = self.command.rebuild_index(i)
+                to_rebuild = True
+                if resume and self.with_history:
+                    history = History(self.historydb, self.debug)
+                    status = history.get_reindex_status(self.database_name, i)
+                    if status is not None and status is True:
+                        self.logger.info(f"Index already rebuild: {i}")
+                        to_rebuild = False
+                if to_rebuild:
+                    status, message = self.command.rebuild_index(i)
                 if self.with_history:
                     history = History(self.historydb, self.debug)
-                    history.set_history(i, status, message)
+                    history.set_or_update_history(
+                        self.database_name, None, None, i, status, message
+                    )
             if status is True:
                 self.logger.info(f"{message}")
             else:

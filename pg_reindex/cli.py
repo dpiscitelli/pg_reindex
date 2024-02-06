@@ -110,6 +110,20 @@ def main():
     parser.add_argument(
         "--historydb", dest="historydb", default="/tmp/pg_reindex.db", help=""
     )
+    parser.add_argument(
+        "--get-history-errors",
+        dest="history_errors",
+        action="store_true",
+        default="False",
+        help="",
+    )
+    parser.add_argument(
+        "--resume",
+        dest="resume",
+        action="store_true",
+        default="False",
+        help="",
+    )
     parser.add_argument("-j", "--jobs", dest="jobs", default=1, help="")
     args = parser.parse_args()
 
@@ -125,13 +139,13 @@ def main():
     work = Reindex(uri, args)
     if args.indexes is not None:
         logger.debug(f"Indexes to rebuild: {args.indexes}")
-        work.reindex_index_job(args.indexes)
+        work.reindex_index_job(args.indexes, args.resume)
     elif args.tables is not None:
         logger.debug(f"Tables to reindex: {args.tables}")
-        work.reindex_table_job(args.tables)
+        work.reindex_table_job(args.tables, args.resume)
     elif args.schemas is not None:
         logger.debug(f"Schemas to reindex: {args.schemas}")
-        work.reindex_schema_job(args.schemas)
+        work.reindex_schema_job(args.schemas, args.resume)
     else:
         pass
     return 0
