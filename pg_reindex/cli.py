@@ -1,6 +1,7 @@
 """Console script for pg_reindex."""
 import argparse
 import sys
+import os
 import logging
 from logging.handlers import RotatingFileHandler
 import textwrap
@@ -25,6 +26,18 @@ def set_logger(debug: bool = False, log_file: str = None) -> logging.Logger:
         file_handler.setFormatter(formatter)
         global_logger.addHandler(file_handler)
     return global_logger
+
+
+def get_params_list(opt_param):
+    if (
+        isinstance(opt_param, list)
+        and len(opt_param) == 1
+        and os.path.isfile(opt_param[0])
+    ):
+        with open(opt_param[0], "r") as file:
+            return file.read().splitlines()
+    else:
+        return opt_param
 
 
 def main():
@@ -59,20 +72,6 @@ def main():
         "--debug", dest="debug", help="Debug extended display", action="store_true"
     )
     parser.add_argument(
-        "-L",
-        "--lock-timeout",
-        dest="lock_timeout",
-        help="Time in seconds to wait for lock (default 2min)",
-        default=120,
-    )
-    parser.add_argument(
-        "-s",
-        "--statement-timeout",
-        dest="statement_timeout",
-        help="Time in seconds to wait for reindex command (default 5h)",
-        default=18000,
-    )
-    parser.add_argument(
         "-S",
         "--schema",
         dest="schemas",
@@ -97,7 +96,19 @@ def main():
         help="Tables to reindex",
     )
     parser.add_argument(
-        "-C", "--concurrently", dest="concurrently", action="store_true", help=""
+        "--lock-timeout",
+        dest="lock_timeout",
+        help="Time in seconds to wait for lock (default 2 min)",
+        default=120,
+    )
+    parser.add_argument(
+        "--statement-timeout",
+        dest="statement_timeout",
+        help="Time in seconds to wait for reindex command (default 5 hours)",
+        default=18000,
+    )
+    parser.add_argument(
+        "--concurrently", dest="concurrently", action="store_true", help=""
     )
     parser.add_argument("--dry-run", dest="dry_run", action="store_true", help="")
     parser.add_argument(
@@ -138,14 +149,17 @@ def main():
 
     work = Reindex(uri, args)
     if args.indexes is not None:
-        logger.debug(f"Indexes to rebuild: {args.indexes}")
-        work.reindex_index_job(args.indexes, args.resume)
+        indexes = get_params_list(args.indexes)
+        logger.debug(f"Indexes to rebuild: {indexes}")
+        work.reindex_index_job(indexes)
     elif args.tables is not None:
-        logger.debug(f"Tables to reindex: {args.tables}")
-        work.reindex_table_job(args.tables, args.resume)
+        tables = get_params_list(args.tables)
+        logger.debug(f"Tables to reindex: {tables}")
+        work.reindex_table_job(tables)
     elif args.schemas is not None:
-        logger.debug(f"Schemas to reindex: {args.schemas}")
-        work.reindex_schema_job(args.schemas, args.resume)
+        schemas = get_params_list(args.schemas)
+        logger.debug(f"Schemas to reindex: {schemas}")
+        work.reindex_schema_job(args.schemas)
     else:
         pass
     return 0

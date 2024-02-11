@@ -26,25 +26,29 @@ class History:
             if result[0] > 0:
                 query = f"""UPDATE indexation_history 
                             SET 
-                                database_name = '{db}', 
-                                indexed_at = '{now}', 
-                                status = '{status}', 
-                                status_message = '{message}', 
-                                timestamp_message = '{now_timestamp}' 
+                                database_name = ?, 
+                                schema_name = ?,
+                                table_name = ?,
+                                indexed_at = ?,
+                                status = ?, 
+                                status_message = ?,
+                                timestamp_message = ?
                             WHERE index_name = '{index}'"""
+                data = (db, schema, table, now, status, message, now_timestamp)
             else:
-                query = f"""INSERT INTO indexation_history(database_name, index_name, indexed_at, status, status_message, timestamp_message) 
-                            VALUES ('{db}', '{index}', '{now}', '{status}', '{message}', '{now_timestamp}')"""
-            cur.execute(query)
+                query = f"""INSERT INTO indexation_history(database_name, schema_name, table_name, index_name, indexed_at, status, status_message, timestamp_message) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)"""
+                data = (db, schema, table, index, now, status, message, now_timestamp)
+            cur.execute(query, data)
 
-    def get_reindex_status(self, db, index):
+    def get_reindex_status(self, db: str, index: str) -> int:
         with SQLLITEConnector(self.db) as history:
             cur = history.connection_db.cursor()
             query = f"""SELECT status FROM indexation_history WHERE database_name = '{db}' AND index_name = '{index}'"""
             cur.execute(query)
             result = cur.fetchone()
             if result:
-                return result[0]
+                return int(result[0])
             else:
                 return None
 

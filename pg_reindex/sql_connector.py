@@ -84,7 +84,7 @@ class SQLLITEConnector:
                         table_name TEXT,
                         index_name TEXT, 
                         indexed_at INTEGER, 
-                        status TEXT, 
+                        status INTEGER, 
                         status_message TEXT, 
                         timestamp_message TEXT, 
                         CONSTRAINT history_pk PRIMARY KEY(database_name, index_name)

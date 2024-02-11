@@ -146,3 +146,28 @@ class PGCommand:
             return True, f" OK:: REINDEX {index_name} (CONCURRENTLY={concurrently})"
         except psycopg.Error as e:
             return False, f" KO:: REINDEX {index_name}: {e}"
+
+    def table_exists(self, table_name: str) -> bool:
+        """
+        Checks if a table exists in the database.
+
+        Args:
+            table_name (str): The name of the table.
+
+        Returns:
+            bool: True if the table exists, False otherwise.
+        """
+        query = sql.SQL(
+            """
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.tables
+                WHERE table_name = %s
+            )
+            """
+        )
+        with SQLConnector(self.uri) as session:
+            c = session.connection_db.cursor()
+            c.execute(query, [table_name])
+            result = c.fetchone()
+        return result[0]
